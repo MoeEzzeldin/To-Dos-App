@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from 'vue';
 import iconRevenue from './assets/total revenue.png';
 import iconM365 from './assets/m365.png';
 import iconAV from './assets/antivirus.png';
@@ -32,6 +32,7 @@ const trackerForm = ref({
 const showAlert = ref(false);
 const alertMessage = ref('');
 const now = ref(new Date());
+let dateTick;
 
 const todos_asc = computed(() => {
   const sorted = todos.value.sort((a, b) => {
@@ -139,9 +140,16 @@ onMounted(() => {
   activeMainTab.value = localStorage.getItem('activeMainTab') || 'ptracker';
   document.documentElement.setAttribute('data-theme', theme.value);
   trackerEntries.value = JSON.parse(localStorage.getItem('trackerEntries')) || [];
+  dateTick = setInterval(() => {
+    now.value = new Date();
+  }, 60 * 1000);
   nextTick(() => {
     resizeAllTextareas();
   });
+});
+
+onUnmounted(() => {
+  if (dateTick) clearInterval(dateTick);
 });
 
 const toggleTheme = () => {
@@ -185,7 +193,7 @@ const trackerTotals = computed(() => {
 });
 
 const todayEntries = computed(() => {
-  const today = new Date();
+  const today = now.value;
   return trackerEntries.value.filter((entry) =>
     isSameDay(new Date(entry.createdAt), today)
   );
@@ -220,17 +228,26 @@ const isSameMonth = (d, ref) =>
 const isSameYear = (d, ref) => d.getFullYear() === ref.getFullYear();
 
 const dailyTotals = computed(() => {
-  const today = new Date();
+  const today = now.value;
   return computeTotals((entry) => isSameDay(new Date(entry.createdAt), today));
 });
 
 const monthlyTotals = computed(() => {
-  const today = new Date();
+  const today = now.value;
   return computeTotals((entry) => isSameMonth(new Date(entry.createdAt), today));
 });
 
+const isSameQuarter = (d, ref) =>
+  d.getFullYear() === ref.getFullYear() &&
+  Math.floor(d.getMonth() / 3) === Math.floor(ref.getMonth() / 3);
+
+const quarterlyTotals = computed(() => {
+  const today = now.value;
+  return computeTotals((entry) => isSameQuarter(new Date(entry.createdAt), today));
+});
+
 const yearlyTotals = computed(() => {
-  const today = new Date();
+  const today = now.value;
   return computeTotals((entry) => isSameYear(new Date(entry.createdAt), today));
 });
 
@@ -441,13 +458,13 @@ const bumpField = (field) => {
           <p class="muted">Quick add: receipt + attaches</p>
         </div>
         <div class="tracker-pills">
-          <span class="pill"><img :src="iconRevenue" alt="$" class="icon-img"> All ${{ trackerTotals.revenue.toFixed(2) }}</span>
-          <span class="pill"><img :src="iconM365" alt="M365" class="icon-img"> All {{ trackerTotals.m365 }}</span>
-          <span class="pill"><img :src="iconAV" alt="AV" class="icon-img"> All {{ trackerTotals.antivirus }}</span>
-          <span class="pill"><img :src="iconMem" alt="Mem" class="icon-img"> All {{ trackerTotals.membership }}</span>
-          <span class="pill"><img :src="iconCC" alt="App" class="icon-img"> All {{ trackerTotals.creditApp }}</span>
-          <span class="pill"><img :src="iconBasket" alt="Basket" class="icon-img"> All {{ trackerTotals.basket }}</span>
-          <span class="pill"><img :src="iconGSP" alt="GSP" class="icon-img"> All {{ trackerTotals.gsp }}</span>
+          <span class="pill"><img :src="iconRevenue" alt="$" class="icon-img"> ${{ dailyTotals.revenue.toFixed(2) }}</span>
+          <span class="pill"><img :src="iconM365" alt="M365" class="icon-img"> {{ dailyTotals.m365 }}</span>
+          <span class="pill"><img :src="iconAV" alt="AV" class="icon-img"> {{ dailyTotals.antivirus }}</span>
+          <span class="pill"><img :src="iconMem" alt="Mem" class="icon-img"> {{ dailyTotals.membership }}</span>
+          <span class="pill"><img :src="iconCC" alt="App" class="icon-img"> {{ dailyTotals.creditApp }}</span>
+          <span class="pill"><img :src="iconBasket" alt="Basket" class="icon-img"> {{ dailyTotals.basket }}</span>
+          <span class="pill"><img :src="iconGSP" alt="GSP" class="icon-img"> {{ dailyTotals.gsp }}</span>
         </div>
       </div>
 
@@ -538,19 +555,6 @@ const bumpField = (field) => {
       <div class="tracker-summary">
         <div class="summary-card">
           <div class="summary-head">
-            <span>Today</span>
-          </div>
-          <div class="summary-row"><img :src="iconRevenue" class="icon-img" alt="$"> ${{ dailyTotals.revenue.toFixed(2) }}</div>
-          <div class="summary-row"><img :src="iconM365" class="icon-img" alt="M365"> {{ dailyTotals.m365 }}</div>
-          <div class="summary-row"><img :src="iconAV" class="icon-img" alt="AV"> {{ dailyTotals.antivirus }}</div>
-          <div class="summary-row"><img :src="iconMem" class="icon-img" alt="Mem"> {{ dailyTotals.membership }}</div>
-          <div class="summary-row"><img :src="iconCC" class="icon-img" alt="App"> {{ dailyTotals.creditApp }}</div>
-          <div class="summary-row"><img :src="iconBasket" class="icon-img" alt="Basket"> {{ dailyTotals.basket }}</div>
-          <div class="summary-row"><img :src="iconGSP" class="icon-img" alt="GSP"> {{ dailyTotals.gsp }}</div>
-        </div>
-
-        <div class="summary-card">
-          <div class="summary-head">
             <span>This Month</span>
           </div>
           <div class="summary-row"><img :src="iconRevenue" class="icon-img" alt="$"> ${{ monthlyTotals.revenue.toFixed(2) }}</div>
@@ -560,6 +564,19 @@ const bumpField = (field) => {
           <div class="summary-row"><img :src="iconCC" class="icon-img" alt="App"> {{ monthlyTotals.creditApp }}</div>
           <div class="summary-row"><img :src="iconBasket" class="icon-img" alt="Basket"> {{ monthlyTotals.basket }}</div>
           <div class="summary-row"><img :src="iconGSP" class="icon-img" alt="GSP"> {{ monthlyTotals.gsp }}</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-head">
+            <span>This Quarter</span>
+          </div>
+          <div class="summary-row"><img :src="iconRevenue" class="icon-img" alt="$"> ${{ quarterlyTotals.revenue.toFixed(2) }}</div>
+          <div class="summary-row"><img :src="iconM365" class="icon-img" alt="M365"> {{ quarterlyTotals.m365 }}</div>
+          <div class="summary-row"><img :src="iconAV" class="icon-img" alt="AV"> {{ quarterlyTotals.antivirus }}</div>
+          <div class="summary-row"><img :src="iconMem" class="icon-img" alt="Mem"> {{ quarterlyTotals.membership }}</div>
+          <div class="summary-row"><img :src="iconCC" class="icon-img" alt="App"> {{ quarterlyTotals.creditApp }}</div>
+          <div class="summary-row"><img :src="iconBasket" class="icon-img" alt="Basket"> {{ quarterlyTotals.basket }}</div>
+          <div class="summary-row"><img :src="iconGSP" class="icon-img" alt="GSP"> {{ quarterlyTotals.gsp }}</div>
         </div>
 
         <div class="summary-card">

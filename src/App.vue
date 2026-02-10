@@ -5,6 +5,8 @@ import iconM365 from './assets/m365.png';
 import iconAV from './assets/antivirus.png';
 import iconMem from './assets/mem.png';
 import iconCC from './assets/CC.png';
+import iconBasket from './assets/basket.webp';
+import iconGSP from './assets/GSP.jpg';
 
 const todos = ref([]);
 const name = ref('');
@@ -23,10 +25,13 @@ const trackerForm = ref({
   antivirus: 0,
   membership: 0,
   creditApp: 0,
+  basket: 0,
+  gsp: 0,
 });
 
 const showAlert = ref(false);
 const alertMessage = ref('');
+const now = ref(new Date());
 
 const todos_asc = computed(() => {
   const sorted = todos.value.sort((a, b) => {
@@ -171,11 +176,65 @@ const trackerTotals = computed(() => {
       acc.antivirus += Number(entry.antivirus) || 0;
       acc.membership += Number(entry.membership) || 0;
       acc.creditApp += Number(entry.creditApp) || 0;
+      acc.basket += Number(entry.basket) || 0;
+      acc.gsp += Number(entry.gsp) || 0;
       return acc;
     },
-    { revenue: 0, m365: 0, antivirus: 0, membership: 0, creditApp: 0 }
+    { revenue: 0, m365: 0, antivirus: 0, membership: 0, creditApp: 0, basket: 0, gsp: 0 }
   );
 });
+
+const todayEntries = computed(() => {
+  const today = new Date();
+  return trackerEntries.value.filter((entry) =>
+    isSameDay(new Date(entry.createdAt), today)
+  );
+});
+
+const computeTotals = (predicate) => {
+  return trackerEntries.value.reduce(
+    (acc, entry) => {
+      if (!predicate(entry)) return acc;
+      acc.revenue += Number(entry.amount) || 0;
+      acc.m365 += Number(entry.m365) || 0;
+      acc.antivirus += Number(entry.antivirus) || 0;
+      acc.membership += Number(entry.membership) || 0;
+      acc.creditApp += Number(entry.creditApp) || 0;
+      acc.basket += Number(entry.basket) || 0;
+      acc.gsp += Number(entry.gsp) || 0;
+      return acc;
+    },
+    { revenue: 0, m365: 0, antivirus: 0, membership: 0, creditApp: 0, basket: 0, gsp: 0 }
+  );
+};
+
+const isSameDay = (d, ref) =>
+  d.getFullYear() === ref.getFullYear() &&
+  d.getMonth() === ref.getMonth() &&
+  d.getDate() === ref.getDate();
+
+const isSameMonth = (d, ref) =>
+  d.getFullYear() === ref.getFullYear() &&
+  d.getMonth() === ref.getMonth();
+
+const isSameYear = (d, ref) => d.getFullYear() === ref.getFullYear();
+
+const dailyTotals = computed(() => {
+  const today = new Date();
+  return computeTotals((entry) => isSameDay(new Date(entry.createdAt), today));
+});
+
+const monthlyTotals = computed(() => {
+  const today = new Date();
+  return computeTotals((entry) => isSameMonth(new Date(entry.createdAt), today));
+});
+
+const yearlyTotals = computed(() => {
+  const today = new Date();
+  return computeTotals((entry) => isSameYear(new Date(entry.createdAt), today));
+});
+
+const allTimeTotals = computed(() => trackerTotals.value);
 
 const addTrackerEntry = () => {
   if (!trackerForm.value.amount) {
@@ -187,11 +246,15 @@ const addTrackerEntry = () => {
     ...trackerForm.value,
     createdAt: new Date().toISOString(),
   });
-  trackerForm.value = { amount: '', m365: 0, antivirus: 0, membership: 0, creditApp: 0 };
+  trackerForm.value = { amount: '', m365: 0, antivirus: 0, membership: 0, creditApp: 0, basket: 0, gsp: 0 };
 };
 
 const removeTrackerEntry = (entry) => {
   trackerEntries.value = trackerEntries.value.filter((e) => e !== entry);
+};
+
+const bumpField = (field) => {
+  trackerForm.value[field] = Number(trackerForm.value[field] || 0) + 1;
 };
 
 </script>
@@ -378,11 +441,13 @@ const removeTrackerEntry = (entry) => {
           <p class="muted">Quick add: receipt + attaches</p>
         </div>
         <div class="tracker-pills">
-          <span class="pill"><img :src="iconRevenue" alt="$" class="icon-img"> ${{ trackerTotals.revenue.toFixed(2) }}</span>
-          <span class="pill"><img :src="iconM365" alt="M365" class="icon-img"> {{ trackerTotals.m365 }}</span>
-          <span class="pill"><img :src="iconAV" alt="AV" class="icon-img"> {{ trackerTotals.antivirus }}</span>
-          <span class="pill"><img :src="iconMem" alt="Mem" class="icon-img"> {{ trackerTotals.membership }}</span>
-          <span class="pill"><img :src="iconCC" alt="App" class="icon-img"> {{ trackerTotals.creditApp }}</span>
+          <span class="pill"><img :src="iconRevenue" alt="$" class="icon-img"> All ${{ trackerTotals.revenue.toFixed(2) }}</span>
+          <span class="pill"><img :src="iconM365" alt="M365" class="icon-img"> All {{ trackerTotals.m365 }}</span>
+          <span class="pill"><img :src="iconAV" alt="AV" class="icon-img"> All {{ trackerTotals.antivirus }}</span>
+          <span class="pill"><img :src="iconMem" alt="Mem" class="icon-img"> All {{ trackerTotals.membership }}</span>
+          <span class="pill"><img :src="iconCC" alt="App" class="icon-img"> All {{ trackerTotals.creditApp }}</span>
+          <span class="pill"><img :src="iconBasket" alt="Basket" class="icon-img"> All {{ trackerTotals.basket }}</span>
+          <span class="pill"><img :src="iconGSP" alt="GSP" class="icon-img"> All {{ trackerTotals.gsp }}</span>
         </div>
       </div>
 
@@ -394,20 +459,40 @@ const removeTrackerEntry = (entry) => {
               <input type="number" step="0.01" min="0" v-model="trackerForm.amount" placeholder="$0.00" />
             </label>
             <label>
-              <img :src="iconM365" alt="M365" class="icon-img">
-              <input type="number" min="0" v-model="trackerForm.m365" />
+              <button type="button" class="icon-btn" @click="bumpField('m365')" title="Add M365">
+                <img :src="iconM365" alt="M365" class="icon-img">
+              </button>
+              <input type="number" min="0" v-model="trackerForm.m365" readonly />
             </label>
             <label>
-              <img :src="iconAV" alt="AV" class="icon-img">
-              <input type="number" min="0" v-model="trackerForm.antivirus" />
+              <button type="button" class="icon-btn" @click="bumpField('antivirus')" title="Add AV">
+                <img :src="iconAV" alt="AV" class="icon-img">
+              </button>
+              <input type="number" min="0" v-model="trackerForm.antivirus" readonly />
             </label>
             <label>
-              <img :src="iconMem" alt="Mem" class="icon-img">
-              <input type="number" min="0" v-model="trackerForm.membership" />
+              <button type="button" class="icon-btn" @click="bumpField('membership')" title="Add Mem">
+                <img :src="iconMem" alt="Mem" class="icon-img">
+              </button>
+              <input type="number" min="0" v-model="trackerForm.membership" readonly />
             </label>
             <label>
-              <img :src="iconCC" alt="App" class="icon-img">
-              <input type="number" min="0" v-model="trackerForm.creditApp" />
+              <button type="button" class="icon-btn" @click="bumpField('creditApp')" title="Add App">
+                <img :src="iconCC" alt="App" class="icon-img">
+              </button>
+              <input type="number" min="0" v-model="trackerForm.creditApp" readonly />
+            </label>
+            <label>
+              <button type="button" class="icon-btn" @click="bumpField('basket')" title="Add Basket">
+                <img :src="iconBasket" alt="Basket" class="icon-img">
+              </button>
+              <input type="number" min="0" v-model="trackerForm.basket" readonly />
+            </label>
+            <label>
+              <button type="button" class="icon-btn" @click="bumpField('gsp')" title="Add GSP">
+                <img :src="iconGSP" alt="GSP" class="icon-img">
+              </button>
+              <input type="number" min="0" v-model="trackerForm.gsp" readonly />
             </label>
             <button type="submit" class="tracker-add">Add</button>
           </form>
@@ -416,23 +501,25 @@ const removeTrackerEntry = (entry) => {
         <div class="tracker-card">
           <div class="tracker-card-head">
             <h4>Today</h4>
-            <small class="muted">{{ trackerEntries.length }} entries</small>
+            <small class="muted">{{ todayEntries.length }} entries</small>
           </div>
-          <div v-if="trackerEntries.length === 0" class="empty-state">
+          <div v-if="todayEntries.length === 0" class="empty-state">
             <p>No entries yet. Log your first sale.</p>
           </div>
           <div v-else class="tracker-table">
-            <div class="tracker-row tracker-header">
-              <img :src="iconRevenue" alt="$" class="icon-img">
-              <img :src="iconM365" alt="M365" class="icon-img">
-              <img :src="iconAV" alt="AV" class="icon-img">
-              <img :src="iconMem" alt="Mem" class="icon-img">
-              <img :src="iconCC" alt="App" class="icon-img">
-              <span></span>
-            </div>
+          <div class="tracker-row tracker-header">
+            <img :src="iconRevenue" alt="$" class="icon-img">
+            <img :src="iconM365" alt="M365" class="icon-img">
+            <img :src="iconAV" alt="AV" class="icon-img">
+            <img :src="iconMem" alt="Mem" class="icon-img">
+            <img :src="iconCC" alt="App" class="icon-img">
+            <img :src="iconBasket" alt="Basket" class="icon-img">
+            <img :src="iconGSP" alt="GSP" class="icon-img">
+            <span></span>
+          </div>
             <div
               class="tracker-row"
-              v-for="entry in trackerEntries"
+              v-for="entry in todayEntries"
               :key="entry.createdAt"
             >
               <span>${{ Number(entry.amount).toFixed(2) }}</span>
@@ -440,9 +527,65 @@ const removeTrackerEntry = (entry) => {
               <span>{{ entry.antivirus }}</span>
               <span>{{ entry.membership }}</span>
               <span>{{ entry.creditApp }}</span>
+              <span>{{ entry.basket }}</span>
+              <span>{{ entry.gsp }}</span>
               <button class="delete ghost" @click="removeTrackerEntry(entry)">Remove</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="tracker-summary">
+        <div class="summary-card">
+          <div class="summary-head">
+            <span>Today</span>
+          </div>
+          <div class="summary-row"><img :src="iconRevenue" class="icon-img" alt="$"> ${{ dailyTotals.revenue.toFixed(2) }}</div>
+          <div class="summary-row"><img :src="iconM365" class="icon-img" alt="M365"> {{ dailyTotals.m365 }}</div>
+          <div class="summary-row"><img :src="iconAV" class="icon-img" alt="AV"> {{ dailyTotals.antivirus }}</div>
+          <div class="summary-row"><img :src="iconMem" class="icon-img" alt="Mem"> {{ dailyTotals.membership }}</div>
+          <div class="summary-row"><img :src="iconCC" class="icon-img" alt="App"> {{ dailyTotals.creditApp }}</div>
+          <div class="summary-row"><img :src="iconBasket" class="icon-img" alt="Basket"> {{ dailyTotals.basket }}</div>
+          <div class="summary-row"><img :src="iconGSP" class="icon-img" alt="GSP"> {{ dailyTotals.gsp }}</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-head">
+            <span>This Month</span>
+          </div>
+          <div class="summary-row"><img :src="iconRevenue" class="icon-img" alt="$"> ${{ monthlyTotals.revenue.toFixed(2) }}</div>
+          <div class="summary-row"><img :src="iconM365" class="icon-img" alt="M365"> {{ monthlyTotals.m365 }}</div>
+          <div class="summary-row"><img :src="iconAV" class="icon-img" alt="AV"> {{ monthlyTotals.antivirus }}</div>
+          <div class="summary-row"><img :src="iconMem" class="icon-img" alt="Mem"> {{ monthlyTotals.membership }}</div>
+          <div class="summary-row"><img :src="iconCC" class="icon-img" alt="App"> {{ monthlyTotals.creditApp }}</div>
+          <div class="summary-row"><img :src="iconBasket" class="icon-img" alt="Basket"> {{ monthlyTotals.basket }}</div>
+          <div class="summary-row"><img :src="iconGSP" class="icon-img" alt="GSP"> {{ monthlyTotals.gsp }}</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-head">
+            <span>This Year</span>
+          </div>
+          <div class="summary-row"><img :src="iconRevenue" class="icon-img" alt="$"> ${{ yearlyTotals.revenue.toFixed(2) }}</div>
+          <div class="summary-row"><img :src="iconM365" class="icon-img" alt="M365"> {{ yearlyTotals.m365 }}</div>
+          <div class="summary-row"><img :src="iconAV" class="icon-img" alt="AV"> {{ yearlyTotals.antivirus }}</div>
+          <div class="summary-row"><img :src="iconMem" class="icon-img" alt="Mem"> {{ yearlyTotals.membership }}</div>
+          <div class="summary-row"><img :src="iconCC" class="icon-img" alt="App"> {{ yearlyTotals.creditApp }}</div>
+          <div class="summary-row"><img :src="iconBasket" class="icon-img" alt="Basket"> {{ yearlyTotals.basket }}</div>
+          <div class="summary-row"><img :src="iconGSP" class="icon-img" alt="GSP"> {{ yearlyTotals.gsp }}</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-head">
+            <span>All Time</span>
+          </div>
+          <div class="summary-row"><img :src="iconRevenue" class="icon-img" alt="$"> ${{ allTimeTotals.revenue.toFixed(2) }}</div>
+          <div class="summary-row"><img :src="iconM365" class="icon-img" alt="M365"> {{ allTimeTotals.m365 }}</div>
+          <div class="summary-row"><img :src="iconAV" class="icon-img" alt="AV"> {{ allTimeTotals.antivirus }}</div>
+          <div class="summary-row"><img :src="iconMem" class="icon-img" alt="Mem"> {{ allTimeTotals.membership }}</div>
+          <div class="summary-row"><img :src="iconCC" class="icon-img" alt="App"> {{ allTimeTotals.creditApp }}</div>
+          <div class="summary-row"><img :src="iconBasket" class="icon-img" alt="Basket"> {{ allTimeTotals.basket }}</div>
+          <div class="summary-row"><img :src="iconGSP" class="icon-img" alt="GSP"> {{ allTimeTotals.gsp }}</div>
         </div>
       </div>
     </section>
@@ -464,3 +607,5 @@ const removeTrackerEntry = (entry) => {
     </footer>
   </main>
 </template>
+
+

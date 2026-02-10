@@ -5,7 +5,7 @@ import iconM365 from './assets/m365.png';
 import iconAV from './assets/antivirus.png';
 import iconMem from './assets/mem.png';
 import iconCC from './assets/CC.png';
-import iconBasket from './assets/basket.webp';
+import iconBasket from './assets/basket.jpg';
 import iconGSP from './assets/GSP.jpg';
 
 const todos = ref([]);

@@ -1,20 +1,33 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
 
 const todos = ref([]);
 const name = ref('');
+const activeTab = ref('personal');
+const theme = ref('light');
+const editingName = ref(false);
+const nameInput = ref(null);
 
 const input_content = ref('');
 const input_category = ref(null);
 
-const todos_asc = computed(() =>
-  todos.value.sort((a, b) => {
+const showAlert = ref(false);
+const alertMessage = ref('');
+
+const todos_asc = computed(() => {
+  const sorted = todos.value.sort((a, b) => {
     return a.createdAt - b.createdAt;
-  })
-);
+  });
+  return sorted.filter(todo => todo.category === activeTab.value);
+});
 
 watch(name, (newVal) => {
   localStorage.setItem('name', newVal);
+});
+
+watch(theme, (newVal) => {
+  localStorage.setItem('theme', newVal);
+  document.documentElement.setAttribute('data-theme', newVal);
 });
 
 watch(
@@ -28,7 +41,15 @@ watch(
 );
 
 const addTodo = () => {
-  if (input_content.value.trim() === '' || input_category.value === null) {
+  if (input_content.value.trim() === '') {
+    alertMessage.value = 'Please enter a task!';
+    showAlert.value = true;
+    return;
+  }
+  
+  if (input_category.value === null) {
+    alertMessage.value = 'Please select a category (Business or Personal)!';
+    showAlert.value = true;
     return;
   }
 
@@ -80,21 +101,63 @@ const removeTodo = (todo) => {
 onMounted(() => {
   name.value = localStorage.getItem('name') || '';
   todos.value = JSON.parse(localStorage.getItem('todos')) || [];
+  theme.value = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', theme.value);
 });
+
+const toggleTheme = () => {
+  theme.value = theme.value === 'light' ? 'dark' : 'light';
+};
+
+const toggleEditName = async () => {
+  editingName.value = true;
+  await nextTick();
+  nameInput.value?.focus();
+};
+
+const finishEditingName = () => {
+  editingName.value = false;
+};
 </script>
 
 <template>
   <main class="app">
+    <!-- Custom Alert Modal -->
+    <div v-if="showAlert" class="alert-modal">
+      <div class="alert-content">
+        <p>{{ alertMessage }}</p>
+        <button @click="showAlert = false" class="alert-btn">Okay</button>
+      </div>
+    </div>
+
+    <div class="theme-toggle">
+      <button class="toggle-btn" @click="toggleTheme" :title="`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`">
+        {{ theme === 'light' ? '🌙' : '☀️' }}
+      </button>
+    </div>
     <section class="greeting">
-      <h2 class="title">
-        What's up,
-        <input type="text" id="name" placeholder="Name here" v-model="name" />
-      </h2>
-      <img
-        src="./assets/icons8-walter-white-50.png"
-        alt="user pic"
-        v-show="!!name"
-      />
+      <div class="greeting-content">
+        <h2 class="title">
+          What's up,<span v-if="name && !editingName" class="name-display" @click="toggleEditName">{{ name }}</span>
+          <input 
+            v-if="!name || editingName" 
+            ref="nameInput"
+            type="text" 
+            id="name" 
+            placeholder="Name" 
+            v-model="name" 
+            class="name-input"
+            @blur="finishEditingName"
+            @keydown.enter="finishEditingName"
+          />
+          <img
+            v-show="!!name"
+            src="./assets/icons8-walter-white-50.png"
+            alt="user pic"
+            class="greeting-img"
+          />
+        </h2>
+      </div>
     </section>
 
     <section class="create-todo">
@@ -142,6 +205,20 @@ onMounted(() => {
     </section>
 
     <section class="todo-list">
+      <div class="tabs">
+        <button 
+          :class="['tab', { active: activeTab === 'personal' }]" 
+          @click="activeTab = 'personal'"
+        >
+          Personal
+        </button>
+        <button 
+          :class="['tab', { active: activeTab === 'business' }]" 
+          @click="activeTab = 'business'"
+        >
+          Business
+        </button>
+      </div>
       <h3>TO DO LIST</h3>
       <div class="list" id="todo-list">
         <div

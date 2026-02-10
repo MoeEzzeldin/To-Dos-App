@@ -135,8 +135,8 @@ const finishEditingName = () => {
         {{ theme === 'light' ? '🌙' : '☀️' }}
       </button>
     </div>
-    <section class="greeting">
-      <div class="greeting-content">
+    <section class="greeting" >
+      <div class="greeting-content" >
         <h2 class="title">
           What's up,<span v-if="name && !editingName" class="name-display" @click="toggleEditName">{{ name }}</span>
           <input 

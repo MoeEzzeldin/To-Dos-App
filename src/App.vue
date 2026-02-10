@@ -1,5 +1,10 @@
 <script setup>
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
+import iconRevenue from './assets/total revenue.png';
+import iconM365 from './assets/m365.png';
+import iconAV from './assets/antivirus.png';
+import iconMem from './assets/mem.png';
+import iconCC from './assets/CC.png';
 
 const todos = ref([]);
 const name = ref('');
@@ -10,6 +15,15 @@ const nameInput = ref(null);
 
 const input_content = ref('');
 const input_category = ref(null);
+const activeMainTab = ref('ptracker');
+const trackerEntries = ref([]);
+const trackerForm = ref({
+  amount: '',
+  m365: 0,
+  antivirus: 0,
+  membership: 0,
+  creditApp: 0,
+});
 
 const showAlert = ref(false);
 const alertMessage = ref('');
@@ -47,7 +61,7 @@ const addTodo = () => {
     return;
   }
   
-  if (input_category.value === null) {
+  if (!input_category.value) {
     alertMessage.value = 'Please select a category (Business or Personal)!';
     showAlert.value = true;
     return;
@@ -91,18 +105,38 @@ const addTodo = () => {
     createdAt: getFormattedDateTime(),
   });
   input_content.value = '';
-  input_category.value = '';
+  input_category.value = null;
 };
 
 const removeTodo = (todo) => {
   todos.value = todos.value.filter((t) => t !== todo);
 };
 
+const autoResize = (event) => {
+  const el = event?.target;
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+};
+
+const resizeAllTextareas = () => {
+  const nodes = document.querySelectorAll('.todo-textarea');
+  nodes.forEach((el) => {
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  });
+};
+
 onMounted(() => {
   name.value = localStorage.getItem('name') || '';
   todos.value = JSON.parse(localStorage.getItem('todos')) || [];
   theme.value = localStorage.getItem('theme') || 'light';
+  activeMainTab.value = localStorage.getItem('activeMainTab') || 'ptracker';
   document.documentElement.setAttribute('data-theme', theme.value);
+  trackerEntries.value = JSON.parse(localStorage.getItem('trackerEntries')) || [];
+  nextTick(() => {
+    resizeAllTextareas();
+  });
 });
 
 const toggleTheme = () => {
@@ -118,6 +152,48 @@ const toggleEditName = async () => {
 const finishEditingName = () => {
   editingName.value = false;
 };
+
+watch(
+  trackerEntries,
+  (val) => localStorage.setItem('trackerEntries', JSON.stringify(val)),
+  { deep: true }
+);
+
+watch(activeMainTab, (val) => {
+  localStorage.setItem('activeMainTab', val);
+});
+
+const trackerTotals = computed(() => {
+  return trackerEntries.value.reduce(
+    (acc, entry) => {
+      acc.revenue += Number(entry.amount) || 0;
+      acc.m365 += Number(entry.m365) || 0;
+      acc.antivirus += Number(entry.antivirus) || 0;
+      acc.membership += Number(entry.membership) || 0;
+      acc.creditApp += Number(entry.creditApp) || 0;
+      return acc;
+    },
+    { revenue: 0, m365: 0, antivirus: 0, membership: 0, creditApp: 0 }
+  );
+});
+
+const addTrackerEntry = () => {
+  if (!trackerForm.value.amount) {
+    alertMessage.value = 'Enter receipt amount.';
+    showAlert.value = true;
+    return;
+  }
+  trackerEntries.value.push({
+    ...trackerForm.value,
+    createdAt: new Date().toISOString(),
+  });
+  trackerForm.value = { amount: '', m365: 0, antivirus: 0, membership: 0, creditApp: 0 };
+};
+
+const removeTrackerEntry = (entry) => {
+  trackerEntries.value = trackerEntries.value.filter((e) => e !== entry);
+};
+
 </script>
 
 <template>
@@ -130,39 +206,72 @@ const finishEditingName = () => {
       </div>
     </div>
 
-    <div class="theme-toggle">
-      <button class="toggle-btn" @click="toggleTheme" :title="`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`">
-        {{ theme === 'light' ? '🌙' : '☀️' }}
+    <header class="top-bar">
+      <div class="brand">
+        <img
+          class="brand-mark"
+          src="./assets/icons8-walter-white-50.png"
+          alt="App logo"
+          v-show="!editingName && name"
+        />
+        <div class="brand-text">
+          <p class="brand-kicker">Welcome back</p>
+          <h2 class="brand-title">
+            Hey,
+            <span v-if="name && !editingName" class="name-display" @click="toggleEditName">{{ name }}</span>
+            <input
+              v-if="!name || editingName"
+              ref="nameInput"
+              type="text"
+              id="name"
+              placeholder="Name"
+              v-model="name"
+              class="name-input"
+              @blur="finishEditingName"
+              @keydown.enter="finishEditingName"
+            />
+          </h2>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button class="theme-pill" @click="toggleTheme" :title="`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`">
+          <span class="theme-switch" aria-hidden="true">
+            <span class="theme-icon sun">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width="1.6" />
+                <path d="M12 2.5v2.2M12 19.3v2.2M4.7 4.7l1.6 1.6M17.7 17.7l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.7 19.3l1.6-1.6M17.7 6.3l1.6-1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <span class="theme-icon moon">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M14.8 3.2a7.8 7.8 0 1 0 6 13.3 8.6 8.6 0 1 1-6-13.3Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="theme-thumb"></span>
+          </span>
+          <span class="sr-only">Switch to {{ theme === 'light' ? 'dark' : 'light' }} mode</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="main-tabs">
+      <button
+        :class="['main-tab', { active: activeMainTab === 'ptracker' }]"
+        @click="activeMainTab = 'ptracker'"
+      >
+        P-Tracker
+      </button>
+      <button
+        :class="['main-tab', { active: activeMainTab === 'todo' }]"
+        @click="activeMainTab = 'todo'"
+      >
+        To Do
       </button>
     </div>
-    <section class="greeting" >
-      <div class="greeting-content" >
-        <h2 class="title">
-          What's up,<span v-if="name && !editingName" class="name-display" @click="toggleEditName">{{ name }}</span>
-          <input 
-            v-if="!name || editingName" 
-            ref="nameInput"
-            type="text" 
-            id="name" 
-            placeholder="Name" 
-            v-model="name" 
-            class="name-input"
-            @blur="finishEditingName"
-            @keydown.enter="finishEditingName"
-          />
-          <img
-            v-show="!!name"
-            src="./assets/icons8-walter-white-50.png"
-            alt="user pic"
-            class="greeting-img"
-          />
-        </h2>
-      </div>
-    </section>
 
-    <section class="create-todo">
+    <section v-if="activeMainTab === 'todo'" class="create-todo">
       <h3>CREATE A TASK</h3>
-
       <form id="new-todo-form" @submit.prevent="addTodo">
         <h4>What's on your to do list?</h4>
         <input
@@ -175,7 +284,7 @@ const finishEditingName = () => {
 
         <h4>Pick a category</h4>
         <div class="options">
-          <label>
+          <label :class="['option', { selected: input_category === 'business' }]">
             <input
               type="radio"
               name="category"
@@ -187,7 +296,7 @@ const finishEditingName = () => {
             <div>Business</div>
           </label>
 
-          <label>
+          <label :class="['option', { selected: input_category === 'personal' }]">
             <input
               type="radio"
               name="category"
@@ -204,7 +313,7 @@ const finishEditingName = () => {
       </form>
     </section>
 
-    <section class="todo-list">
+    <section v-if="activeMainTab === 'todo'" class="todo-list">
       <div class="tabs">
         <button 
           :class="['tab', { active: activeTab === 'personal' }]" 
@@ -223,31 +332,123 @@ const finishEditingName = () => {
       <div class="list" id="todo-list">
         <div
           v-for="todo in todos_asc"
-          :class="`todo-item ${todo.done && 'done'}`"
+          :class="['todo-item', { done: todo.done }]"
         >
-          <label>
-            <input type="checkbox" v-model="todo.done" />
-            <span
-              :class="`bubble ${
-                todo.category == 'business' ? 'business' : 'personal'
-              }`"
-            ></span>
-          </label>
-
-          <div class="todo-content">
-            <textarea type="text" v-model="todo.content" /> <br>
-            <span>{{ todo.createdAt }}</span>
+          <div class="todo-head">
+            <div class="todo-left">
+              <label class="todo-check">
+                <input type="checkbox" v-model="todo.done" />
+                <span
+                  :class="['bubble', todo.category === 'business' ? 'business' : 'personal']"
+                ></span>
+              </label>
+              <span
+                class="todo-chip"
+                :class="todo.category === 'business' ? 'business' : 'personal'"
+              >
+                {{ todo.category === 'business' ? 'Business' : 'Personal' }}
+              </span>
+            </div>
           </div>
 
-          
-          <div class="actions">
-            <button class="delete" @click="removeTodo(todo)">Delete</button>
+          <div class="todo-body">
+            <textarea
+              class="todo-textarea"
+              rows="1"
+              v-model="todo.content"
+              @input="autoResize($event)"
+              @focus="autoResize($event)"
+            ></textarea>
+          </div>
+
+          <div class="todo-foot">
+            <span class="todo-meta">{{ todo.createdAt }}</span>
+            <div class="actions">
+              <button class="delete" @click="removeTodo(todo)">Delete</button>
+            </div>
           </div>
         </div>
       </div>
     </section>
+
+    <section v-else class="tracker main-panel">
+      <div class="tracker-header">
+        <div>
+          <h3>Track Sales</h3>
+          <p class="muted">Quick add: receipt + attaches</p>
+        </div>
+        <div class="tracker-pills">
+          <span class="pill"><img :src="iconRevenue" alt="$" class="icon-img"> ${{ trackerTotals.revenue.toFixed(2) }}</span>
+          <span class="pill"><img :src="iconM365" alt="M365" class="icon-img"> {{ trackerTotals.m365 }}</span>
+          <span class="pill"><img :src="iconAV" alt="AV" class="icon-img"> {{ trackerTotals.antivirus }}</span>
+          <span class="pill"><img :src="iconMem" alt="Mem" class="icon-img"> {{ trackerTotals.membership }}</span>
+          <span class="pill"><img :src="iconCC" alt="App" class="icon-img"> {{ trackerTotals.creditApp }}</span>
+        </div>
+      </div>
+
+      <div class="tracker-grid">
+        <div class="tracker-card">
+          <form class="tracker-form" @submit.prevent="addTrackerEntry">
+            <label>
+              <img :src="iconRevenue" alt="$" class="icon-img">
+              <input type="number" step="0.01" min="0" v-model="trackerForm.amount" placeholder="$0.00" />
+            </label>
+            <label>
+              <img :src="iconM365" alt="M365" class="icon-img">
+              <input type="number" min="0" v-model="trackerForm.m365" />
+            </label>
+            <label>
+              <img :src="iconAV" alt="AV" class="icon-img">
+              <input type="number" min="0" v-model="trackerForm.antivirus" />
+            </label>
+            <label>
+              <img :src="iconMem" alt="Mem" class="icon-img">
+              <input type="number" min="0" v-model="trackerForm.membership" />
+            </label>
+            <label>
+              <img :src="iconCC" alt="App" class="icon-img">
+              <input type="number" min="0" v-model="trackerForm.creditApp" />
+            </label>
+            <button type="submit" class="tracker-add">Add</button>
+          </form>
+        </div>
+
+        <div class="tracker-card">
+          <div class="tracker-card-head">
+            <h4>Today</h4>
+            <small class="muted">{{ trackerEntries.length }} entries</small>
+          </div>
+          <div v-if="trackerEntries.length === 0" class="empty-state">
+            <p>No entries yet. Log your first sale.</p>
+          </div>
+          <div v-else class="tracker-table">
+            <div class="tracker-row tracker-header">
+              <img :src="iconRevenue" alt="$" class="icon-img">
+              <img :src="iconM365" alt="M365" class="icon-img">
+              <img :src="iconAV" alt="AV" class="icon-img">
+              <img :src="iconMem" alt="Mem" class="icon-img">
+              <img :src="iconCC" alt="App" class="icon-img">
+              <span></span>
+            </div>
+            <div
+              class="tracker-row"
+              v-for="entry in trackerEntries"
+              :key="entry.createdAt"
+            >
+              <span>${{ Number(entry.amount).toFixed(2) }}</span>
+              <span>{{ entry.m365 }}</span>
+              <span>{{ entry.antivirus }}</span>
+              <span>{{ entry.membership }}</span>
+              <span>{{ entry.creditApp }}</span>
+              <button class="delete ghost" @click="removeTrackerEntry(entry)">Remove</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <footer>
-      <p>© 2024 Moe Ezzeldin. All rights reserved.</p>
+      <p>Ã‚Â© 2024 Moe Ezzeldin. All rights reserved.</p>
       <p>
         This is a personal project created for learning purposes. Use at your
         own risk.

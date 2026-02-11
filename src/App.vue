@@ -471,41 +471,41 @@ const bumpField = (field) => {
       <div class="tracker-grid">
         <div class="tracker-card">
           <form class="tracker-form" @submit.prevent="addTrackerEntry">
-            <label>
+            <label class="amount-row">
               <img :src="iconRevenue" alt="$" class="icon-img">
               <input type="number" step="0.01" min="0" v-model="trackerForm.amount" placeholder="$0.00" />
             </label>
-            <label>
+            <label :class="['icon-row', { 'is-selected': trackerForm.m365 > 0 }]">
               <button type="button" class="icon-btn" @click="bumpField('m365')" title="Add M365">
                 <img :src="iconM365" alt="M365" class="icon-img">
               </button>
               <input type="number" min="0" v-model="trackerForm.m365" readonly />
             </label>
-            <label>
+            <label :class="['icon-row', { 'is-selected': trackerForm.antivirus > 0 }]">
               <button type="button" class="icon-btn" @click="bumpField('antivirus')" title="Add AV">
                 <img :src="iconAV" alt="AV" class="icon-img">
               </button>
               <input type="number" min="0" v-model="trackerForm.antivirus" readonly />
             </label>
-            <label>
+            <label :class="['icon-row', { 'is-selected': trackerForm.membership > 0 }]">
               <button type="button" class="icon-btn" @click="bumpField('membership')" title="Add Mem">
                 <img :src="iconMem" alt="Mem" class="icon-img">
               </button>
               <input type="number" min="0" v-model="trackerForm.membership" readonly />
             </label>
-            <label>
+            <label :class="['icon-row', { 'is-selected': trackerForm.creditApp > 0 }]">
               <button type="button" class="icon-btn" @click="bumpField('creditApp')" title="Add App">
                 <img :src="iconCC" alt="App" class="icon-img">
               </button>
               <input type="number" min="0" v-model="trackerForm.creditApp" readonly />
             </label>
-            <label>
+            <label :class="['icon-row', { 'is-selected': trackerForm.basket > 0 }]">
               <button type="button" class="icon-btn" @click="bumpField('basket')" title="Add Basket">
                 <img :src="iconBasket" alt="Basket" class="icon-img">
               </button>
               <input type="number" min="0" v-model="trackerForm.basket" readonly />
             </label>
-            <label>
+            <label :class="['icon-row', { 'is-selected': trackerForm.gsp > 0 }]">
               <button type="button" class="icon-btn" @click="bumpField('gsp')" title="Add GSP">
                 <img :src="iconGSP" alt="GSP" class="icon-img">
               </button>
